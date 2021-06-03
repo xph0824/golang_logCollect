@@ -38,4 +38,13 @@ func main() {
 		return
 	}
 	logs.Debug("初始化ES成功")
+
+	//run
+	err = run()
+	if err != nil {
+		logs.Error("运行错误：", err)
+		return
+	}
+
+	logs.Warn("logTransfer 退出")
 }
