@@ -10,7 +10,7 @@ import (
 //状态
 const (
 	StatusNormal = 1
-	statusDelete = 2
+	StatusDelete = 2
 )
 
 //方便其他包调用
@@ -51,10 +51,9 @@ func InitTail(conf []CollectConf, chanSize int) (err error) {
 	tailObjMgr = &TailObjMgr{
 		msgChan: make(chan *TextMsg, chanSize), //创建chan
 	}
-
 	//加载配置
 	if len(conf) == 0 {
-		logs.Error("无效的collect配置：", err)
+		logs.Error("无效的collect配置：%v, err：%v",conf, err)
 	}
 
 	//循环导入
@@ -78,7 +77,7 @@ func createNewTask(conf CollectConf) {
 	})
 
 	if err != nil {
-		logs.Error("手机日志文件[%s]错误, err:", conf.LogPath, err)
+		logs.Error("收集日志文件[%s]错误, err:", conf.LogPath, err)
 		return
 	}
 
@@ -120,6 +119,56 @@ func readFromTail(tailObj *TailObj) {
 
 	}
 
+}
+
+// 新增etcd配置项
+func UpdateConfig(confs []CollectConf) (err error) {
+	//// 加入锁, 防止多个goroutine工作
+	//tailObjMgr.lock.Lock()
+	//defer tailObjMgr.lock.Unlock()
+
+	// 创建新的tailtask
+	for _, oneConf := range confs {
+		// 对于已经运行的所有实例, 路径是否一样
+		var isRuning = false
+		for _, obj := range tailObjMgr.TailObjs {
+			// 路径一样则证明是同一实例
+			if oneConf.LogPath == obj.conf.LogPath {
+				isRuning = true
+				obj.status = StatusNormal
+				break
+			}
+		}
+
+		// 检查是否已经存在
+		if isRuning {
+			continue
+		}
+
+		// 如果不存在该配置项 新建一个tailtask任务
+		createNewTask(oneConf)
+	}
+
+	// 遍历所有查看是否存在删除操作
+	var tailObjs []*TailObj
+	for _, obj := range tailObjMgr.TailObjs {
+		obj.status = StatusDelete
+		for _, oneConf := range confs {
+			if oneConf.LogPath == obj.conf.LogPath {
+				obj.status = StatusNormal
+				break
+			}
+		}
+		// 如果status为删除, 则将exitChan置为1
+		if obj.status == StatusDelete {
+			obj.exitChan <- 1
+		}
+		// 将obj存入临时的数组中
+		tailObjs = append(tailObjs, obj)
+	}
+	// 将临时数组传入tailsObjs中
+	tailObjMgr.TailObjs = tailObjs
+	return
 }
 
 //获取一条

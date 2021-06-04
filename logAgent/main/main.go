@@ -30,11 +30,11 @@ func main() {
 	logs.Debug("导入日志成功%v", logConfig)
 
 	// 初识化etcd
-	//collectConf, err := initEtcd(logConfig.etcdAddr, logConfig.etcdKey)
-	//if err != nil {
-	//	logs.Error("初始化etcd失败", err)
-	//}
-	//logs.Debug("初始化etcd成功!")
+	collectConf, err := initEtcd(logConfig.etcdAddr, logConfig.etcdKey)
+	if err != nil {
+		logs.Error("初始化etcd失败", err)
+	}
+	logs.Debug("初始化etcd成功!",collectConf)
 
 	// 初始化tailf
 	err = tailf.InitTail(collectConf, logConfig.chanSize)
@@ -60,3 +60,5 @@ func main() {
 	logs.Info("程序退出")
 
 }
+
+
